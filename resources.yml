@@ -1,0 +1,110 @@
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: dynamo
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeTable
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:DescribeStream
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:ListStreams
+                Resource:
+                  - "Fn::GetAtt": [ ApplicationsDynamoTable, Arn ]
+        - PolicyName: sns
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:publish
+                  - sns:subscribe
+                  - sns:set*
+                  - sns:list*
+                Resource:
+                  - arn:aws:sns:*:*:${file(./config/${self:provider.config_file}):SNS_TOPIC_NAME}
+        - PolicyName: ecs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:Describe*
+                  - ecs:List*
+                Resource:
+                  - "*"
+        - PolicyName: state-machine
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource:
+                  - "*"
+        - PolicyName: cloudwatch
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "arn:aws:logs:*:*:*"
+
+  ApplicationsDynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${file(./config/${self:provider.config_file}):APPLICATIONS_TABLE_NAME}
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ${file(./config/${self:provider.config_file}):SNS_TOPIC_NAME}
+      TopicName: ${file(./config/${self:provider.config_file}):SNS_TOPIC_NAME}
+
+  ApiGatewayMethodVersionPost:
+    Type: AWS::ApiGateway::Method
+    DependsOn:
+      - ApiGatewayResourceVersion
+    Properties:
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseTemplates:
+              application/json: '{"response_type":"ephemeral", "text": "One moment please while I process your request :eyes:"}'
+      ResourceId:
+        Ref: ApiGatewayResourceVersion
+      RestApiId:
+        Ref: ApiGatewayRestApi

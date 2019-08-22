@@ -1,0 +1,80 @@
+# !!! COPY THIS TO config/ DIRECTORY !!!
+#
+# The name you want to assign to this app. It is referenced in certain places.
+# Also m ake sure to replace this keyword throughout this configuration file!
+APP_NAME: franco
+# Channels where write commands can happen
+ALLOWED_CHANNELS:
+  - G00000000
+  - C00000000
+# A Dynamo table where information about ECS applications are stored
+APPLICATIONS_TABLE_NAME: staging-franco-applications
+# Replace value below with your AWS ACCOUNT NUMBER
+AWS_ACCOUNT_NUMBER: NOT_A_REAL_AWS_ACCOUNT_NUMBER
+# What is the default region you want this app to be setup in?
+AWS_DEFAULT_REGION: us-east-1
+# What regions do you have your services setup in?
+AWS_REGIONS:
+  - us-east-1
+  - eu-west-1
+  - eu-central-1
+# An exponential backoff limit - this works well for this application to avoid
+# API RATE LIMITING
+AWS_RETRY_LIMIT: 20
+CLOUDWATCH_EVENT_PATTERN_ECS:
+  detail-type:
+    - ECS Task State Change
+  source:
+    - aws.ecs
+  detail:
+    desiredStatus:
+      - RUNNING
+    lastStatus:
+      - RUNNING
+# A Cloudwatch Event Rule to send Task Definition changes to an SNS topic
+# We grab current information about the new task definition and update it's
+# corresponding entry in Dynamo
+CLOUDWATCH_EVENTS_RULE_ECS_NAME: staging-franco-cloudwatch_ecs_event
+# This app is highly dependent on your ECS Task Definitions containing a
+# parameter defining the configuration version from SSM. You can add/remove
+# options from here.
+CONFIGURATION_VERSION_NAMING_OPTIONS:
+  - VERSION
+  - PARAM_VERSION
+  - CONFIG_VERSION
+# Default naming convention - variable is referenced in resources.yml and a few
+# other places
+DEFAULT_NAMING: staging-franco
+# In order to create a custom sub-domain and ssl certificate, enter the Hosted Zone
+# ID of where you want the sub-domain to be created
+# Example: Z0000000000000
+HOSTED_ZONE_ID: NOT_A_REAL_HOSTED_ZONE_ID
+# Default messages to be used across this application
+MESSAGES:
+  user_not_authenticated: "User not authenticated."
+  health_check_status: "Franco is up and running."
+# Commands which are read-only and have no write operations within it. By
+# default, all slack users can run any READ_COMMAND
+READ_COMMANDS:
+  - '/version'
+# Enter the hosted zone name where you want the sub-domain to be placed.
+ROOT_DOMAIN: NOT_A_REAL_HOSTED_DOMAIN_NAME
+# The sub-domain name that you want. Can be anything.
+SUB_DOMAIN: franco
+# Enter your Slack Token here (found in your Slack App - api.slack.com)
+# Example format:
+#   xoxp-1111111111-222222222222-333333333333-44444444444444444444444444444444
+SLACK_TOKEN: NOT_A_REAL_SLACK_TOKEN
+# Enter your Slack Verification here (found in your Slack App - api.slack.com)
+# Example: AAAABBBBCCCCDDDDEEEEFFFF
+SLACK_VERIFICATION: NOT_A_REAL_SLACK_VERIFICATION
+# A SNS topic for the app which is used for Cloudwatch Events and Deployments
+SNS_TOPIC_NAME: staging-franco-applications
+# Commands which containts write-operations to AWS services. By default, only
+# the Slack User Groups in the WRITE_GROUPS section have access to them.
+WRITE_COMMANDS:
+  - '/deploy'
+  - '/unlock'
+WRITE_GROUPS:
+  - S00000000
+  - S11111111

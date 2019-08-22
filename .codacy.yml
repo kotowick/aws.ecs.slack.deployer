@@ -1,0 +1,21 @@
+---
+engines:
+  rubocop:
+    enabled: true
+  duplication:
+    enabled: true
+  metric:
+    enabled: true
+  coverage:
+    enabled: true
+languages:
+  ruby:
+    extensions:
+      - '-css.resource'
+
+exclude_paths:
+  - '.bundle/**'
+  - '.serverless/**'
+  - '.venv/**'
+  - 'vendor/**'
+  - '**/tests/**'

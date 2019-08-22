@@ -1,0 +1,94 @@
+service: ${file(./config/${self:provider.config_file}):APP_NAME}
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+provider:
+  name: aws
+  runtime: ruby2.5
+  role: LambdaRole
+  region: ${opt:region}
+  stage: ${opt:stage, 'staging'}
+  config_file: config.${self:provider.stage}.yml
+  default_naming: ${file(./config/${self:provider.config_file}):DEFAULT_NAMING}
+  environment:
+    CONFIG_FILE: ${self:provider.config_file}
+    DEPLOYED_REGION: "#{AWS::Region}"
+    DEFAULT_LAMBDA_ARN_PREFIX: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:provider.default_naming}"
+
+plugins:
+  - serverless-ruby-package
+  - serverless-pseudo-parameters
+  - serverless-step-functions
+  - serverless-stage-manager
+  - serverless-certificate-creator
+  - serverless-domain-manager
+
+custom:
+  stages:
+    - staging
+    - prod
+
+  customDomain:
+    domainName: ${file(./config/${self:provider.config_file}):SUB_DOMAIN}.${file(./config/${self:provider.config_file}):ROOT_DOMAIN}
+    certificateName: ${file(./config/${self:provider.config_file}):SUB_DOMAIN}.${file(./config/${self:provider.config_file}):ROOT_DOMAIN}
+    hostedZoneId: ${file(./config/${self:provider.config_file}):HOSTED_ZONE_ID}
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+  customCertificate:
+    certificateName: ${file(./config/${self:provider.config_file}):SUB_DOMAIN}.${file(./config/${self:provider.config_file}):ROOT_DOMAIN}
+    hostedZoneId: ${file(./config/${self:provider.config_file}):HOSTED_ZONE_ID}
+    region: ${self:provider.region}
+
+functions:
+  healthCheck:
+    name: ${self:provider.default_naming}-health-check
+    handler: src/health_check.lambda_handler
+    events:
+    - http:
+        path: health-check
+        method: get
+  authentication:
+    name: ${self:provider.default_naming}-authentication
+    handler: src/step_functions/authentication.lambda_handler
+  version:
+    name: ${self:provider.default_naming}-version
+    handler: src/step_functions/version.lambda_handler
+  slack:
+    name: ${self:provider.default_naming}-slack
+    handler: src/step_functions/slack.lambda_handler
+  cloudwatchEvents:
+    name: ${self:provider.default_naming}-cloudwatchEvents
+    handler: src/step_functions/cloudwatch_events.lambda_handler
+
+stepFunctions:
+  stateMachines:
+    versionStateMachine:
+      name: ${self:provider.default_naming}-stateMachine-version
+      definition:
+        StartAt: Authentication
+        States:
+          Authentication:
+            Type: Task
+            Resource: ${self:provider.environment.DEFAULT_LAMBDA_ARN_PREFIX}-authentication
+            Next: Version
+          Version:
+            Type: Task
+            Resource: ${self:provider.environment.DEFAULT_LAMBDA_ARN_PREFIX}-version
+            Next: Slack
+          Slack:
+            Type: Task
+            Resource: ${self:provider.environment.DEFAULT_LAMBDA_ARN_PREFIX}-slack
+            End: true
+      events:
+        - http:
+            path: version
+            method: post
+
+resources:
+  - ${file(resources.yml)}
+
+package:
+  include:
+    - src/**
+    - config/**

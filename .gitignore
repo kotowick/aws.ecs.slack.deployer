@@ -1,0 +1,14 @@
+node_modules
+.venv
+version.py
+yarn-error.log
+vendor
+.serverless/*
+config/*
+.bundle/
+tests/
+
+# ignore all logs files
+config/*
+# don't ignore keep files
+!.keep
